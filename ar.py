@@ -135,8 +135,8 @@ class Main(object):
 
     @staticmethod
     def _print_header(has_benchmark):
-        print 'Period\t\tReturn\tEnd Value' + '\tDifference From Benchmark' if has_benchmark else ''
-        print '======\t\t======\t=========' + '\t=========================' if has_benchmark else ''
+        print 'Period\t\tReturn\tEnd Value' + ('\tDifference From Benchmark' if has_benchmark else '')
+        print '======\t\t======\t=========' + ('\t=========================' if has_benchmark else '')
 
 
 if __name__ == '__main__':

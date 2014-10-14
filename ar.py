@@ -72,7 +72,6 @@ class Main(object):
         self._args = self._parse_args()
         self._historic_data = HistoricData('data.csv')
         self._interest_calculator = InterestCalculator()
-        self._benchmark_data = None
 
     @staticmethod
     def _parse_args():
@@ -86,15 +85,14 @@ class Main(object):
         return parser.parse_args()
 
     def run(self):
-        if self._args.benchmark is not None:
-            self._benchmark_data = self._calculate_benchmark()
-            print 'Benchmark\t{0:.2f}%\t{1:,.2f}'.format(self._benchmark_data.annualized_returns,
-                                                         self._benchmark_data.end_value)
-
-        real_returns = self._calculate_real_returns()
-        self._print_results(real_returns)
+        benchmark_data = self._calculate_benchmark()
+        annualized_returns_data = self._calculate_annualized_returns()
+        self._print_results(annualized_returns_data, benchmark_data)
 
     def _calculate_benchmark(self):
+        if self._args.benchmark is None:
+            return None
+
         benchmark_returns = [self._args.benchmark] * self._args.duration
         benchmark_annualized_returns = self._interest_calculator.calculate_annualized_return(benchmark_returns)
         benchmark_end_value = self._interest_calculator.calculate_investment_value(self._args.principal,
@@ -102,7 +100,7 @@ class Main(object):
                                                                                    self._args.contrib)
         return BenchmarkData(benchmark_annualized_returns, benchmark_end_value)
 
-    def _calculate_real_returns(self):
+    def _calculate_annualized_returns(self):
         start_year = self._historic_data.get_start_year()
         end_year = self._historic_data.get_end_year()
 
@@ -120,15 +118,25 @@ class Main(object):
 
         return results
 
-    def _print_results(self, results):
-        for result in sorted(results, key=lambda item: item.end_value, reverse=True):
-            if self._args.max >= result.annualized_return >= self._args.min:
-                diff_from_benchmark = ''
-                if self._benchmark_data is not None:
-                    diff_from_benchmark = '({0:,.2f})'.format(result.end_value - self._benchmark_data.end_value)
+    def _print_results(self, annualized_returns_data, benchmark_data):
+        has_benchmark = benchmark_data is not None
+        self._print_header(has_benchmark)
 
-                print '{0}-{1}\t{2:.2f}%\t{3:,.2f}\t{4}'.format(result.start, result.end, result.annualized_return,
-                                                                result.end_value, diff_from_benchmark)
+        if has_benchmark:
+            print 'Benchmark\t{0:.2f}%\t{1:,.2f}\n'.format(benchmark_data.annualized_returns,
+                                                           benchmark_data.end_value)
+
+        for result in sorted(annualized_returns_data, key=lambda item: item.end_value, reverse=True):
+            if self._args.max >= result.annualized_return >= self._args.min:
+                output = '{0}-{1}\t{2:.2f}%\t{3:,.2f}'.format(result.start, result.end, result.annualized_return,
+                                                              result.end_value)
+                output += '\t\t({0:,.2f})'.format(result.end_value - benchmark_data.end_value) if has_benchmark else ''
+                print output
+
+    @staticmethod
+    def _print_header(has_benchmark):
+        print 'Period\t\tReturn\tEnd Value' + '\tDifference From Benchmark' if has_benchmark else ''
+        print '======\t\t======\t=========' + '\t=========================' if has_benchmark else ''
 
 
 if __name__ == '__main__':

@@ -53,11 +53,26 @@ class InterestCalculator(object):
         return end_value
 
 
+class BenchmarkData(object):
+    def __init__(self, annualized_returns, end_value):
+        self.annualized_returns = annualized_returns
+        self.end_value = end_value
+
+
+class AnnualizedReturnData(object):
+    def __init__(self, start, end, annualized_return, end_value):
+        self.start = start
+        self.end = end
+        self.annualized_return = annualized_return
+        self.end_value = end_value
+
+
 class Main(object):
     def __init__(self):
         self._args = self._parse_args()
         self._historic_data = HistoricData('data.csv')
         self._interest_calculator = InterestCalculator()
+        self._benchmark_data = None
 
     @staticmethod
     def _parse_args():
@@ -72,9 +87,12 @@ class Main(object):
 
     def run(self):
         if self._args.benchmark is not None:
-            self._calculate_benchmark()
+            self._benchmark_data = self._calculate_benchmark()
+            print 'Benchmark\t{0:.2f}%\t{1:,.2f}'.format(self._benchmark_data.annualized_returns,
+                                                         self._benchmark_data.end_value)
 
-        self._calculate_real_returns()
+        real_returns = self._calculate_real_returns()
+        self._print_results(real_returns)
 
     def _calculate_benchmark(self):
         benchmark_returns = [self._args.benchmark] * self._args.duration
@@ -82,7 +100,7 @@ class Main(object):
         benchmark_end_value = self._interest_calculator.calculate_investment_value(self._args.principal,
                                                                                    benchmark_returns,
                                                                                    self._args.contrib)
-        print 'Benchmark\t{0:.2f}%\t{1:,.2f}'.format(benchmark_annualized_returns, benchmark_end_value)
+        return BenchmarkData(benchmark_annualized_returns, benchmark_end_value)
 
     def _calculate_real_returns(self):
         start_year = self._historic_data.get_start_year()
@@ -95,12 +113,22 @@ class Main(object):
             end_value = self._interest_calculator.calculate_investment_value(self._args.principal, annual_returns,
                                                                              self._args.contrib)
 
-            results.append((start_year, start_year + self._args.duration, annualized_return, end_value))
+            annualized_return_data = AnnualizedReturnData(start_year, start_year + self._args.duration,
+                                                          annualized_return, end_value)
+            results.append(annualized_return_data)
             start_year += 1
 
-        for result in sorted(results, key=lambda item: item[3], reverse=True):
-            if self._args.max >= result[2] >= self._args.min:
-                print '{0}-{1}\t{2:.2f}%\t{3:,.2f}'.format(result[0], result[1], result[2], result[3])
+        return results
+
+    def _print_results(self, results):
+        for result in sorted(results, key=lambda item: item.end_value, reverse=True):
+            if self._args.max >= result.annualized_return >= self._args.min:
+                diff_from_benchmark = ''
+                if self._benchmark_data is not None:
+                    diff_from_benchmark = '({0:,.2f})'.format(result.end_value - self._benchmark_data.end_value)
+
+                print '{0}-{1}\t{2:.2f}%\t{3:,.2f}\t{4}'.format(result.start, result.end, result.annualized_return,
+                                                                result.end_value, diff_from_benchmark)
 
 
 if __name__ == '__main__':

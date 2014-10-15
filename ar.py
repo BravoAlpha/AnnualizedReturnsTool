@@ -3,6 +3,7 @@ __author__ = 'moshele'
 
 import argparse
 import csv
+import itertools
 import math
 
 
@@ -47,7 +48,7 @@ class InterestCalculator(object):
     @staticmethod
     def calculate_investment_value(principal, annual_returns, annual_contributions):
         end_value = principal
-        for current_return, current_contribution in zip(annual_returns, annual_contributions):
+        for current_return, current_contribution in itertools.izip(annual_returns, annual_contributions):
             end_value *= (1 + current_return / 100)
             end_value += current_contribution
 

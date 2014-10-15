@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 __author__ = 'moshele'
 
 import argparse
@@ -44,11 +45,11 @@ class InterestCalculator(object):
         return annualized_return * 100
 
     @staticmethod
-    def calculate_investment_value(principal, annual_returns_list, annual_contribution):
+    def calculate_investment_value(principal, annual_returns, annual_contributions):
         end_value = principal
-        for current_return in annual_returns_list:
+        for current_return, current_contribution in zip(annual_returns, annual_contributions):
             end_value *= (1 + current_return / 100)
-            end_value += annual_contribution
+            end_value += current_contribution
 
         return end_value
 
@@ -79,17 +80,31 @@ class Main(object):
         parser.add_argument('-duration', type=int, required=True, help='The investment duration in years')
         parser.add_argument('-principal', type=float, required=True, help='Invested amount')
         parser.add_argument('-contrib', type=float, default=0, help='Annual contribution')
+        parser.add_argument('-contrib-start', type=int, default=1, help='The year from which annual contributions starts')
+        parser.add_argument('-contrib-stop', type=int, help='The year from which annual contributions stops (default is never)')
         parser.add_argument('-benchmark', type=float, help='Annualized return to use as a benchmark')
         parser.add_argument('-max', type=float, default=float('inf'), help='Max annualized return to show')
         parser.add_argument('-min', type=float, default=float('-inf'), help='Min annualized return to show')
-        return parser.parse_args()
+
+        args = parser.parse_args()
+        args.contrib_stop = args.contrib_stop or args.duration
+
+        return args
 
     def run(self):
-        benchmark_data = self._calculate_benchmark()
-        annualized_returns_data = self._calculate_annualized_returns()
+        contributions = self._calculate_contributions()
+        benchmark_data = self._calculate_benchmark(contributions)
+        annualized_returns_data = self._calculate_annualized_returns(contributions)
         self._print_results(annualized_returns_data, benchmark_data)
 
-    def _calculate_benchmark(self):
+    def _calculate_contributions(self):
+        contributions = []
+        for year in range(1, self._args.duration + 1):
+            current_contribution = self._args.contrib if self._args.contrib_start <= year <= self._args.contrib_stop else 0
+            contributions.append(current_contribution)
+        return contributions
+
+    def _calculate_benchmark(self, contributions):
         if self._args.benchmark is None:
             return None
 
@@ -97,10 +112,10 @@ class Main(object):
         benchmark_annualized_returns = self._interest_calculator.calculate_annualized_return(benchmark_returns)
         benchmark_end_value = self._interest_calculator.calculate_investment_value(self._args.principal,
                                                                                    benchmark_returns,
-                                                                                   self._args.contrib)
+                                                                                   contributions)
         return BenchmarkData(benchmark_annualized_returns, benchmark_end_value)
 
-    def _calculate_annualized_returns(self):
+    def _calculate_annualized_returns(self, contributions):
         start_year = self._historic_data.get_start_year()
         end_year = self._historic_data.get_end_year()
 
@@ -109,7 +124,7 @@ class Main(object):
             annual_returns = self._historic_data.get_returns_for(start_year, start_year + self._args.duration)
             annualized_return = self._interest_calculator.calculate_annualized_return(annual_returns)
             end_value = self._interest_calculator.calculate_investment_value(self._args.principal, annual_returns,
-                                                                             self._args.contrib)
+                                                                             contributions)
 
             annualized_return_data = AnnualizedReturnData(start_year, start_year + self._args.duration,
                                                           annualized_return, end_value)

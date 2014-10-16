@@ -73,12 +73,13 @@ class AnnualizedReturnData(object):
 class Main(object):
     def __init__(self):
         self._args = self._parse_args()
-        self._historic_data = HistoricData('data.csv')
+        self._historic_data = HistoricData(self._args.source)
         self._interest_calculator = InterestCalculator()
 
     @staticmethod
     def _parse_args():
         parser = argparse.ArgumentParser()
+        parser.add_argument('-source', type=str, required=True, help='Path to a CSV file with historic data (year,return)')
         parser.add_argument('-duration', type=int, required=True, help='The investment duration in years')
         parser.add_argument('-principal', type=float, required=True, help='Invested amount')
         parser.add_argument('-contrib', type=float, default=0, help='Annual contribution')

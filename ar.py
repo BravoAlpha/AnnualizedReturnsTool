@@ -15,10 +15,10 @@ class HistoricData(object):
     def _load_historic_data(filename):
         with open(filename, 'rb') as data:
             reader = csv.reader(data)
-            return dict(reader)
+            return {int(row[0]): float(row[1]) for row in reader}
 
     def get_return_for(self, year):
-        return float(self._historic_data[str(year)])
+        return self._historic_data[year]
 
     def get_returns_for(self, start, end):
         returns = []
@@ -27,10 +27,10 @@ class HistoricData(object):
         return returns
 
     def get_start_year(self):
-        return int(min(self._historic_data))
+        return min(self._historic_data)
 
     def get_end_year(self):
-        return int(max(self._historic_data))
+        return max(self._historic_data)
 
 
 class InterestCalculator(object):
@@ -48,7 +48,9 @@ class InterestCalculator(object):
     @staticmethod
     def calculate_investment_value(principal, annual_returns, annual_contributions, annual_withdrawals):
         end_value = principal
-        for current_return, current_contribution, current_withdrawal in itertools.izip(annual_returns, annual_contributions, annual_withdrawals):
+        for current_return, current_contribution, current_withdrawal in itertools.izip(annual_returns,
+                                                                                       annual_contributions,
+                                                                                       annual_withdrawals):
             end_value -= current_withdrawal
             end_value *= (1 + current_return / 100)
             end_value += current_contribution
@@ -79,14 +81,17 @@ class Main(object):
     @staticmethod
     def _parse_args():
         parser = argparse.ArgumentParser()
-        parser.add_argument('-source', type=str, required=True, help='Path to a CSV file with historic data (year,return)')
+        parser.add_argument('-source', type=str, required=True,
+                            help='Path to a CSV file with historic data (year,return)')
         parser.add_argument('-duration', type=int, required=True, help='The investment duration in years')
         parser.add_argument('-principal', type=float, required=True, help='Invested amount')
         parser.add_argument('-contrib', type=float, default=0, help='Annual contribution')
-        parser.add_argument('-contrib-start', type=int, default=1, help='The year from which annual contributions starts')
+        parser.add_argument('-contrib-start', type=int, default=1,
+                            help='The year from which annual contributions starts')
         parser.add_argument('-contrib-stop', type=int, help='The year from which annual contributions stops')
         parser.add_argument('-withdraw', type=float, default=0, help='Annual withdrawal')
-        parser.add_argument('-withdraw-start', type=int, default=1, help='The year from which annual withdrawals starts')
+        parser.add_argument('-withdraw-start', type=int, default=1,
+                            help='The year from which annual withdrawals starts')
         parser.add_argument('-withdraw-stop', type=int, help='The year from which annual withdrawal stops')
         parser.add_argument('-benchmark', type=float, help='Annualized return to use as a benchmark')
         parser.add_argument('-max', type=float, default=float('inf'), help='Max annualized return to show')
@@ -136,13 +141,13 @@ class Main(object):
         end_year = self._historic_data.get_end_year()
 
         results = []
-        while start_year + self._args.duration <= end_year:
-            annual_returns = self._historic_data.get_returns_for(start_year, start_year + self._args.duration)
+        while start_year + self._args.duration <= end_year + 1:
+            annual_returns = self._historic_data.get_returns_for(start_year, start_year + self._args.duration - 1)
             annualized_return = self._interest_calculator.calculate_annualized_return(annual_returns)
             end_value = self._interest_calculator.calculate_investment_value(self._args.principal, annual_returns,
                                                                              contributions, withdrawals)
 
-            annualized_return_data = AnnualizedReturnData(start_year, start_year + self._args.duration,
+            annualized_return_data = AnnualizedReturnData(start_year, start_year + self._args.duration - 1,
                                                           annualized_return, end_value)
             results.append(annualized_return_data)
             start_year += 1
